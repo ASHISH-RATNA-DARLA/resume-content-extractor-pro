@@ -1,0 +1,3 @@
+@echo off
+echo Starting Resume Parser Application...
+npm run dev:all
