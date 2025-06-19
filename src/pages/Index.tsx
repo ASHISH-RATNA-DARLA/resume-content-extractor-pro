@@ -2,7 +2,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
-import { FileText, Upload, Database, ArrowRight, Briefcase } from "lucide-react";
+import { FileText, Upload, Database, ArrowRight, Briefcase, FileQuestion } from "lucide-react";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -32,7 +32,7 @@ const Index = () => {
         </div>
 
         {/* Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-16">
           <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow duration-300">
             <CardHeader className="text-center pb-4">
               <Upload className="h-12 w-12 text-blue-500 mx-auto mb-4" />
@@ -86,6 +86,27 @@ const Index = () => {
               </ul>
             </CardContent>
           </Card>
+
+          <Card 
+            className="border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 cursor-pointer"
+            onClick={() => navigate('/tech-questions')}
+          >
+            <CardHeader className="text-center pb-4">
+              <FileQuestion className="h-12 w-12 text-orange-500 mx-auto mb-4" />
+              <CardTitle className="text-xl">Technical Questions</CardTitle>
+              <CardDescription>
+                Access a database of technical interview questions
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="text-sm text-muted-foreground space-y-2">
+                <li>• Multiple choice & long-form questions</li>
+                <li>• Filter by tech stack & difficulty</li>
+                <li>• Track candidate responses</li>
+                <li>• Premium content available</li>
+              </ul>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Call to Action */}
@@ -94,14 +115,25 @@ const Index = () => {
           <p className="text-lg text-muted-foreground mb-6">
             Upload your first resume and experience the power of automated parsing
           </p>
-          <Button 
-            size="lg" 
-            onClick={() => navigate('/resume-parser')}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
-          >
-            Get Started Now
-            <ArrowRight className="ml-2 h-5 w-5" />
-          </Button>
+          <div className="flex flex-col sm:flex-row justify-center gap-4">
+            <Button 
+              size="lg" 
+              onClick={() => navigate('/resume-parser')}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+            >
+              Parse Resumes
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
+            <Button 
+              size="lg" 
+              onClick={() => navigate('/tech-questions')}
+              variant="outline"
+              className="border-blue-600 text-blue-600 hover:bg-blue-50"
+            >
+              Explore Technical Questions
+              <FileQuestion className="ml-2 h-5 w-5" />
+            </Button>
+          </div>
         </div>
       </div>
     </div>

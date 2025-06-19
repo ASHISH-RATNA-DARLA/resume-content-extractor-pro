@@ -12,7 +12,11 @@ interface UploadState {
   uploadError: string | null;
 }
 
-const ResumeUpload = () => {
+interface ResumeUploadProps {
+  onUploadSuccess?: (resumeData: any) => void;
+}
+
+const ResumeUpload: React.FC<ResumeUploadProps> = ({ onUploadSuccess }) => {
   const [uploadState, setUploadState] = useState<UploadState>({
     isDragging: false,
     isUploading: false,
@@ -55,7 +59,7 @@ const ResumeUpload = () => {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch('http://localhost:3001/api/upload-resume', {
+      const response = await fetch('/api/upload-resume', {
         method: 'POST',
         body: formData,
       });
@@ -72,6 +76,11 @@ const ResumeUpload = () => {
           title: "Resume uploaded successfully!",
           description: `${result.data.fileName} has been parsed and saved.`,
         });
+        
+        // Call the onUploadSuccess callback if provided
+        if (onUploadSuccess) {
+          onUploadSuccess(result.data);
+        }
       } else {
         throw new Error(result.error || 'Upload failed');
       }
@@ -107,81 +116,71 @@ const ResumeUpload = () => {
   };
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileText className="h-6 w-6" />
-          Resume Parser
-        </CardTitle>
-        <CardDescription>
-          Upload PDF or DOCX resumes to extract and store content
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div
-          className={`
-            border-2 border-dashed rounded-lg p-8 text-center transition-colors duration-200
-            ${uploadState.isDragging ? 'border-primary bg-primary/5' : 'border-muted-foreground/25'}
-            ${uploadState.isUploading ? 'opacity-50 pointer-events-none' : 'hover:border-primary hover:bg-primary/5'}
-          `}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-        >
-          {uploadState.isUploading ? (
-            <div className="flex flex-col items-center gap-4">
-              <Loader2 className="h-12 w-12 animate-spin text-primary" />
-              <p className="text-lg font-medium">Processing resume...</p>
-              <p className="text-sm text-muted-foreground">Extracting text content</p>
+    <div>
+      <div
+        className={`
+          border-2 border-dashed rounded-lg p-6 text-center transition-colors duration-200
+          ${uploadState.isDragging ? 'border-primary bg-primary/5' : 'border-muted-foreground/25'}
+          ${uploadState.isUploading ? 'opacity-50 pointer-events-none' : 'hover:border-primary hover:bg-primary/5'}
+        `}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        {uploadState.isUploading ? (
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            <p className="text-base font-medium">Processing resume...</p>
+            <p className="text-sm text-muted-foreground">Extracting text content</p>
+          </div>
+        ) : uploadState.uploadSuccess ? (
+          <div className="flex flex-col items-center gap-3">
+            <CheckCircle className="h-10 w-10 text-green-500" />
+            <p className="text-base font-medium text-green-700">Resume uploaded successfully!</p>
+            <Button 
+              onClick={() => setUploadState(prev => ({ ...prev, uploadSuccess: false }))}
+              variant="outline"
+              size="sm"
+            >
+              Upload Another Resume
+            </Button>
+          </div>
+        ) : uploadState.uploadError ? (
+          <div className="flex flex-col items-center gap-3">
+            <AlertCircle className="h-10 w-10 text-red-500" />
+            <p className="text-base font-medium text-red-700">Upload failed</p>
+            <p className="text-sm text-muted-foreground">{uploadState.uploadError}</p>
+            <Button 
+              onClick={() => setUploadState(prev => ({ ...prev, uploadError: null }))}
+              variant="outline"
+              size="sm"
+            >
+              Try Again
+            </Button>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-3">
+            <Upload className="h-10 w-10 text-muted-foreground" />
+            <div>
+              <p className="text-base font-medium">Drop your resume here</p>
+              <p className="text-sm text-muted-foreground">or click to browse files</p>
             </div>
-          ) : uploadState.uploadSuccess ? (
-            <div className="flex flex-col items-center gap-4">
-              <CheckCircle className="h-12 w-12 text-green-500" />
-              <p className="text-lg font-medium text-green-700">Resume uploaded successfully!</p>
-              <p className="text-sm text-muted-foreground">Content has been extracted and saved</p>
-              <Button 
-                onClick={() => setUploadState(prev => ({ ...prev, uploadSuccess: false }))}
-                variant="outline"
-              >
-                Upload Another Resume
-              </Button>
+            <div className="flex gap-2 text-xs text-muted-foreground">
+              <span className="bg-muted px-2 py-1 rounded">PDF</span>
+              <span className="bg-muted px-2 py-1 rounded">DOCX</span>
             </div>
-          ) : uploadState.uploadError ? (
-            <div className="flex flex-col items-center gap-4">
-              <AlertCircle className="h-12 w-12 text-red-500" />
-              <p className="text-lg font-medium text-red-700">Upload failed</p>
-              <p className="text-sm text-muted-foreground">{uploadState.uploadError}</p>
-              <Button 
-                onClick={() => setUploadState(prev => ({ ...prev, uploadError: null }))}
-                variant="outline"
-              >
-                Try Again
-              </Button>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-4">
-              <Upload className="h-12 w-12 text-muted-foreground" />
-              <div>
-                <p className="text-lg font-medium">Drop your resume here</p>
-                <p className="text-sm text-muted-foreground">or click to browse files</p>
-              </div>
-              <div className="flex gap-2 text-xs text-muted-foreground">
-                <span className="bg-muted px-2 py-1 rounded">PDF</span>
-                <span className="bg-muted px-2 py-1 rounded">DOCX</span>
-              </div>
-            </div>
-          )}
-          
-          <input
-            type="file"
-            accept=".pdf,.docx"
-            onChange={handleFileSelect}
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            disabled={uploadState.isUploading}
-          />
-        </div>
-      </CardContent>
-    </Card>
+          </div>
+        )}
+        
+        <input
+          type="file"
+          accept=".pdf,.docx"
+          onChange={handleFileSelect}
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+          disabled={uploadState.isUploading}
+        />
+      </div>
+    </div>
   );
 };
 
