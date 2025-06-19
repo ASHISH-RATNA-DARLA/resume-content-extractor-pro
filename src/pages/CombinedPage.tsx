@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useToast } from '../hooks/use-toast';
 import { 
@@ -40,7 +41,7 @@ const CombinedPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [techStacks, setTechStacks] = useState<string[]>([]);
-  const [resumes, setResumes] = useState([]);
+  const [resumes, setResumes] = useState<any[]>([]);
   const [resumeLoading, setResumeLoading] = useState(true);
 
   // Fetch all questions on component mount
@@ -54,15 +55,15 @@ const CombinedPage: React.FC = () => {
           setQuestions(data.questions);
           setFilteredQuestions(data.questions);
           
-          // Extract unique tech stacks
-          const uniqueTechStacks = [...new Set(data.questions.map((q: TechnicalQuestion) => q.tech_stack))];
+          // Extract unique tech stacks with proper type checking
+          const uniqueTechStacks = [...new Set(data.questions.map((q: TechnicalQuestion) => q.tech_stack))].filter((stack): stack is string => typeof stack === 'string');
           setTechStacks(uniqueTechStacks);
         }
       } catch (error) {
         console.error('Error fetching questions:', error);
         
         // Use sample data if API fails
-        const sampleQuestions = [
+        const sampleQuestions: TechnicalQuestion[] = [
           {
             id: '1',
             question_text: 'What is the difference between let, const, and var in JavaScript?',
@@ -173,7 +174,7 @@ const CombinedPage: React.FC = () => {
       if (question.question_type === 'mcq') {
         // Sample MCQ options for question id 3
         if (question.id === '3') {
-          const sampleOptions = [
+          const sampleOptions: MCQOption[] = [
             {
               id: 'opt1',
               question_id: '3',
@@ -340,7 +341,7 @@ const CombinedPage: React.FC = () => {
   };
 
   // Handle resume upload success
-  const handleResumeUploadSuccess = (newResume) => {
+  const handleResumeUploadSuccess = (newResume: any) => {
     setResumes(prevResumes => [...prevResumes, newResume]);
     toast({
       title: 'Success',
@@ -525,7 +526,7 @@ const CombinedPage: React.FC = () => {
                   {resumeLoading ? (
                     <div className="flex justify-center items-center h-40">Loading resumes...</div>
                   ) : (
-                    <ResumeList resumes={resumes} />
+                    <ResumeList />
                   )}
                 </div>
               </div>
