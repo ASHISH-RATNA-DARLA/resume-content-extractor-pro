@@ -3,9 +3,10 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Calendar, Download, Eye, Loader2 } from 'lucide-react';
+import { FileText, Calendar, Brain, Eye, Loader2, MessageSquare } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { getResumes } from '@/lib/resumeService';
 
 interface ParsedResume {
   id: string;
@@ -15,32 +16,189 @@ interface ParsedResume {
   fileType: string;
 }
 
-interface ResumeListProps {
-  resumes: ParsedResume[];
+interface Question {
+  category: string;
+  question: string;
+  difficulty: string;
 }
 
-const ResumeList: React.FC<ResumeListProps> = ({ resumes }) => {
+const ResumeList: React.FC = () => {
+  const [resumes, setResumes] = useState<ParsedResume[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null);
-  const [resumeContent, setResumeContent] = useState<string>('');
-  const [loadingContent, setLoadingContent] = useState(false);
-  
-  const fetchResumeContent = (id: string) => {
-    setLoadingContent(true);
+  const [generatedQuestions, setGeneratedQuestions] = useState<Question[]>([]);
+
+  useEffect(() => {
+    fetchResumes();
+  }, []);
+
+  const fetchResumes = async () => {
     try {
-      const resume = resumes.find(r => r.id === id);
-      if (resume) {
-        setResumeContent(resume.extractedText);
-      }
+      const result = getResumes();
+      setResumes(result.resumes);
     } catch (error) {
-      console.error('Error fetching resume content:', error);
+      console.error('Error fetching resumes:', error);
     } finally {
-      setLoadingContent(false);
+      setLoading(false);
     }
   };
-  
-  const handleViewResume = (id: string) => {
-    setSelectedResumeId(id);
-    fetchResumeContent(id);
+
+  const generateQuestionsFromResume = (extractedText: string): Question[] => {
+    const questions: Question[] = [];
+    const lowerText = extractedText.toLowerCase();
+    
+    // Check for programming languages and technologies
+    if (lowerText.includes('javascript') || lowerText.includes('js')) {
+      questions.push(
+        {
+          category: 'JavaScript',
+          question: 'Explain the difference between var, let, and const in JavaScript.',
+          difficulty: 'Medium'
+        },
+        {
+          category: 'JavaScript',
+          question: 'What is event delegation and why is it useful?',
+          difficulty: 'Hard'
+        }
+      );
+    }
+    
+    if (lowerText.includes('react')) {
+      questions.push(
+        {
+          category: 'React',
+          question: 'What are React Hooks and how do they differ from class components?',
+          difficulty: 'Medium'
+        },
+        {
+          category: 'React',
+          question: 'Explain the React component lifecycle methods.',
+          difficulty: 'Hard'
+        }
+      );
+    }
+    
+    if (lowerText.includes('python')) {
+      questions.push(
+        {
+          category: 'Python',
+          question: 'Explain the difference between lists and tuples in Python.',
+          difficulty: 'Easy'
+        },
+        {
+          category: 'Python',
+          question: 'What are Python decorators and how do you use them?',
+          difficulty: 'Hard'
+        }
+      );
+    }
+    
+    if (lowerText.includes('java')) {
+      questions.push(
+        {
+          category: 'Java',
+          question: 'What is the difference between abstract classes and interfaces in Java?',
+          difficulty: 'Medium'
+        },
+        {
+          category: 'Java',
+          question: 'Explain Java memory management and garbage collection.',
+          difficulty: 'Hard'
+        }
+      );
+    }
+    
+    if (lowerText.includes('database') || lowerText.includes('sql')) {
+      questions.push(
+        {
+          category: 'Database',
+          question: 'Explain ACID properties in database transactions.',
+          difficulty: 'Hard'
+        },
+        {
+          category: 'Database',
+          question: 'What is the difference between SQL and NoSQL databases?',
+          difficulty: 'Medium'
+        }
+      );
+    }
+    
+    if (lowerText.includes('aws') || lowerText.includes('cloud')) {
+      questions.push(
+        {
+          category: 'Cloud Computing',
+          question: 'What are the different types of cloud service models (IaaS, PaaS, SaaS)?',
+          difficulty: 'Medium'
+        },
+        {
+          category: 'AWS',
+          question: 'Explain the difference between EC2, Lambda, and ECS.',
+          difficulty: 'Hard'
+        }
+      );
+    }
+    
+    if (lowerText.includes('docker') || lowerText.includes('container')) {
+      questions.push({
+        category: 'DevOps',
+        question: 'What are the benefits of containerization with Docker?',
+        difficulty: 'Medium'
+      });
+    }
+    
+    if (lowerText.includes('kubernetes') || lowerText.includes('k8s')) {
+      questions.push({
+        category: 'DevOps',
+        question: 'Explain Kubernetes pods, services, and deployments.',
+        difficulty: 'Hard'
+      });
+    }
+    
+    // Add some general questions based on experience level
+    const experienceKeywords = ['senior', 'lead', 'manager', 'architect'];
+    const hasExperience = experienceKeywords.some(keyword => lowerText.includes(keyword));
+    
+    if (hasExperience) {
+      questions.push(
+        {
+          category: 'Leadership',
+          question: 'How do you handle technical disagreements within your team?',
+          difficulty: 'Medium'
+        },
+        {
+          category: 'Architecture',
+          question: 'Describe how you would design a scalable system for high traffic.',
+          difficulty: 'Hard'
+        }
+      );
+    }
+    
+    // Always add some general questions
+    questions.push(
+      {
+        category: 'General',
+        question: 'Describe your most challenging project and how you overcame the difficulties.',
+        difficulty: 'Medium'
+      },
+      {
+        category: 'Problem Solving',
+        question: 'How do you approach debugging a complex issue in your code?',
+        difficulty: 'Medium'
+      },
+      {
+        category: 'Best Practices',
+        question: 'What are some code review best practices you follow?',
+        difficulty: 'Easy'
+      }
+    );
+    
+    return questions;
+  };
+
+  const handleViewQuestions = (resume: ParsedResume) => {
+    setSelectedResumeId(resume.id);
+    const questions = generateQuestionsFromResume(resume.extractedText);
+    setGeneratedQuestions(questions);
   };
 
   const formatDate = (dateString: string) => {
@@ -53,81 +211,109 @@ const ResumeList: React.FC<ResumeListProps> = ({ resumes }) => {
     });
   };
 
-  const downloadResume = (resume: ParsedResume) => {
-    const dataStr = JSON.stringify(resume, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${resume.fileName}_extracted.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+  const getDifficultyColor = (difficulty: string) => {
+    switch (difficulty) {
+      case 'Easy': return 'bg-green-100 text-green-800';
+      case 'Medium': return 'bg-yellow-100 text-yellow-800';
+      case 'Hard': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2">Loading resumes...</span>
+      </div>
+    );
+  }
 
   return (
     <div>
       {resumes.length === 0 ? (
-        <div className="text-center py-4">
-          <FileText className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
-          <p className="text-sm font-medium text-muted-foreground">No resumes uploaded yet</p>
-          <p className="text-xs text-muted-foreground">Upload a resume to get started</p>
+        <div className="text-center py-8">
+          <Brain className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <p className="text-lg font-medium text-muted-foreground mb-2">No resumes analyzed yet</p>
+          <p className="text-sm text-muted-foreground">Upload a resume to generate personalized interview questions</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
+          <h2 className="text-2xl font-semibold mb-4">Your Analyzed Resumes</h2>
           {resumes.map((resume) => (
-            <div key={resume.id} className="border rounded-lg p-3 hover:bg-muted/50 transition-colors">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-6 w-6 text-primary" />
-                  <div>
-                    <h3 className="font-medium text-sm">{resume.fileName}</h3>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Calendar className="h-3 w-3" />
-                      {formatDate(resume.parsedAt)}
-                      <Badge variant="secondary" className="text-xs">{resume.fileType.toUpperCase()}</Badge>
+            <Card key={resume.id} className="hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <FileText className="h-8 w-8 text-primary" />
+                    <div>
+                      <CardTitle className="text-lg">{resume.fileName}</CardTitle>
+                      <CardDescription className="flex items-center gap-2 mt-1">
+                        <Calendar className="h-4 w-4" />
+                        Analyzed on {formatDate(resume.parsedAt)}
+                        <Badge variant="secondary" className="ml-2">
+                          {resume.fileType.toUpperCase()}
+                        </Badge>
+                      </CardDescription>
                     </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-1">
                   <Dialog onOpenChange={(open) => {
-                    if (open) handleViewResume(resume.id);
+                    if (open) handleViewQuestions(resume);
                   }}>
                     <DialogTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-7 px-2">
-                        <Eye className="h-4 w-4" />
+                      <Button variant="outline" className="flex items-center gap-2">
+                        <Brain className="h-4 w-4" />
+                        View Questions
                       </Button>
                     </DialogTrigger>
                     <DialogContent className="max-w-4xl max-h-[80vh]">
                       <DialogHeader>
-                        <DialogTitle>{resume.fileName}</DialogTitle>
+                        <DialogTitle className="flex items-center gap-2">
+                          <MessageSquare className="h-5 w-5" />
+                          Interview Questions for {resume.fileName}
+                        </DialogTitle>
                       </DialogHeader>
-                      <ScrollArea className="h-[60vh] w-full">
-                        {loadingContent && selectedResumeId === resume.id ? (
-                          <div className="flex items-center justify-center h-full">
-                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                            <span className="ml-2">Loading content...</span>
+                      <ScrollArea className="h-[60vh] w-full pr-4">
+                        {selectedResumeId === resume.id && (
+                          <div className="space-y-4">
+                            {generatedQuestions.map((question, index) => (
+                              <Card key={index} className="p-4">
+                                <div className="flex items-start justify-between mb-2">
+                                  <Badge variant="outline" className="text-xs">
+                                    {question.category}
+                                  </Badge>
+                                  <Badge className={`text-xs ${getDifficultyColor(question.difficulty)}`}>
+                                    {question.difficulty}
+                                  </Badge>
+                                </div>
+                                <p className="text-sm font-medium text-gray-900">
+                                  {question.question}
+                                </p>
+                              </Card>
+                            ))}
+                            
+                            {generatedQuestions.length === 0 && (
+                              <div className="text-center py-8">
+                                <Brain className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                                <p className="text-sm text-muted-foreground">
+                                  No specific questions generated. Upload a more detailed resume for better results.
+                                </p>
+                              </div>
+                            )}
                           </div>
-                        ) : (
-                          <pre className="whitespace-pre-wrap text-sm p-4 bg-muted rounded">
-                            {selectedResumeId === resume.id ? resumeContent : ''}
-                          </pre>
                         )}
                       </ScrollArea>
                     </DialogContent>
                   </Dialog>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    className="h-7 px-2"
-                    onClick={() => downloadResume(resume)}
-                  >
-                    <Download className="h-4 w-4" />
-                  </Button>
                 </div>
-              </div>
-            </div>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Brain className="h-4 w-4" />
+                  <span>Ready to generate personalized interview questions</span>
+                </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}
