@@ -263,10 +263,185 @@ const TechnicalQuestions: React.FC = () => {
           <CardDescription>Practice technical interview questions across different tech stacks and difficulty levels</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {/* Filter controls and question list components would go here */}
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">Technical questions interface coming soon...</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Filters */}
+            <div className="md:col-span-1 space-y-4">
+              <div>
+                <h3 className="text-lg font-medium mb-2">Filters</h3>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="tech-stack">Tech Stack</Label>
+                    <Select value={techStackFilter} onValueChange={setTechStackFilter}>
+                      <SelectTrigger id="tech-stack">
+                        <SelectValue placeholder="All Tech Stacks" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">All Tech Stacks</SelectItem>
+                        {techStacks.map((stack) => (
+                          <SelectItem key={stack} value={stack}>{stack}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="difficulty">Difficulty</Label>
+                    <Select value={difficultyFilter} onValueChange={setDifficultyFilter}>
+                      <SelectTrigger id="difficulty">
+                        <SelectValue placeholder="All Difficulties" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">All Difficulties</SelectItem>
+                        <SelectItem value="easy">Easy</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="hard">Hard</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <Button variant="outline" onClick={handleResetFilters} className="w-full">
+                    Reset Filters
+                  </Button>
+                </div>
+              </div>
+              
+              <Separator />
+              
+              <div>
+                <h3 className="text-lg font-medium mb-2">Question Types</h3>
+                <div className="grid grid-cols-1 gap-2">
+                  <div className="flex items-center justify-between">
+                    <span>Multiple Choice</span>
+                    <Badge variant="outline">MCQ</Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Short Answer</span>
+                    <Badge variant="outline">50-100 words</Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Long Answer</span>
+                    <Badge variant="outline">150-300 words</Badge>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Questions List and Details */}
+            <div className="md:col-span-2">
+              <Tabs defaultValue="questions" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="questions">Questions</TabsTrigger>
+                  <TabsTrigger value="selected" disabled={!selectedQuestion}>Selected Question</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="questions" className="space-y-4">
+                  <div className="rounded-md border">
+                    <div className="p-4">
+                      <h3 className="text-lg font-medium">Available Questions ({filteredQuestions.length})</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Click on a question to view details and answer
+                      </p>
+                    </div>
+                    
+                    <div className="max-h-[500px] overflow-y-auto">
+                      {filteredQuestions.length > 0 ? (
+                        filteredQuestions.map((question) => (
+                          <div 
+                            key={question.id}
+                            className="border-t p-4 cursor-pointer hover:bg-muted transition-colors"
+                            onClick={() => handleQuestionSelect(question)}
+                          >
+                            <div className="flex justify-between items-start mb-2">
+                              <h4 className="font-medium">{question.question_text}</h4>
+                              <div className="flex space-x-2">
+                                <Badge variant="outline">{question.question_type}</Badge>
+                                {renderDifficultyBadge(question.difficulty_level)}
+                              </div>
+                            </div>
+                            <div className="flex justify-between text-sm text-muted-foreground">
+                              <span>{question.tech_stack}</span>
+                              <span>{question.topic}</span>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="p-8 text-center">
+                          <p className="text-muted-foreground">No questions match your filters</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="selected">
+                  {selectedQuestion && (
+                    <Card>
+                      <CardHeader>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <CardTitle>{selectedQuestion.question_text}</CardTitle>
+                            <CardDescription>
+                              {selectedQuestion.tech_stack} - {selectedQuestion.topic}
+                            </CardDescription>
+                          </div>
+                          <div className="flex space-x-2">
+                            <Badge variant="outline">{selectedQuestion.question_type}</Badge>
+                            {renderDifficultyBadge(selectedQuestion.difficulty_level)}
+                          </div>
+                        </div>
+                      </CardHeader>
+                      
+                      <CardContent>
+                        {selectedQuestion.question_type === 'mcq' ? (
+                          <div className="space-y-4">
+                            <RadioGroup value={selectedOption} onValueChange={setSelectedOption}>
+                              {mcqOptions.map((option) => (
+                                <div key={option.id} className="flex items-center space-x-2">
+                                  <RadioGroupItem value={option.id} id={option.id} />
+                                  <Label htmlFor={option.id} className="cursor-pointer">
+                                    {option.option_label}. {option.option_text}
+                                  </Label>
+                                </div>
+                              ))}
+                            </RadioGroup>
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            <Label htmlFor="answer">Your Answer</Label>
+                            <Textarea
+                              id="answer"
+                              placeholder="Type your answer here..."
+                              value={userAnswer}
+                              onChange={(e) => setUserAnswer(e.target.value)}
+                              rows={6}
+                            />
+                            <p className="text-sm text-muted-foreground">
+                              {selectedQuestion.question_type === 'short_answer' 
+                                ? 'Provide a brief explanation (50-100 words)' 
+                                : 'Provide a detailed explanation (150-300 words)'}
+                            </p>
+                          </div>
+                        )}
+                      </CardContent>
+                      
+                      <CardFooter className="flex justify-between">
+                        <Button 
+                          variant="outline" 
+                          onClick={() => setSelectedQuestion(null)}
+                        >
+                          Back to Questions
+                        </Button>
+                        <Button 
+                          onClick={handleSubmitAnswer}
+                          disabled={submitting}
+                        >
+                          {submitting ? 'Submitting...' : 'Submit Answer'}
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  )}
+                </TabsContent>
+              </Tabs>
             </div>
           </div>
         </CardContent>

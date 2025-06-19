@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
 // Initialize Supabase client with the correct URL and service role key
-const supabaseUrl = 'https://mlqmtqzwronhxiuzelcs.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1scW10cXp3cm9uaHhpdXplbGNzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDMxNDIxNCwiZXhwIjoyMDY1ODkwMjE0fQ.AMdQS1AJ3AgpEYaFvn6vqu0liFoNMs0FaFBHsln8ZYI';
+const supabaseUrl = 'https://qlwyyizfvcersgxbckei.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFsd3l5aXpmdmNlcnNneGJja2VpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTcxODk1MjQ3NywiZXhwIjoyMDM0NTI4NDc3fQ.Yd_6-TbcB62Qcw-0RqPQnA-_MWgzH1QQnBnWqZDYnqE';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Create sample technical questions
