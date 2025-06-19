@@ -1,4 +1,4 @@
-import { extractPdfText } from './extractPdf';
+
 import { extractDocxText } from './extractDocx';
 import { saveResumeData, getAllResumes, ParsedResume } from './resumeParser';
 
@@ -26,82 +26,143 @@ export async function uploadResume(file: File): Promise<{
       };
     }
 
-    // Try server-side processing first
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      
-      const response = await fetch('/api/upload-resume', {
-        method: 'POST',
-        body: formData,
-      });
-      
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          // Create resume data object from server response
-          const resumeData: ParsedResume = {
-            id: result.data.id,
-            fileName: result.data.fileName,
-            extractedText: result.data.extractedText,
-            parsedAt: result.data.parsedAt,
-            fileType: `.${fileExtension}`,
-          };
+    // For PDF files, we must use server-side processing
+    if (fileExtension === 'pdf') {
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await fetch('/api/upload-resume', {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success) {
+            // Create resume data object from server response
+            const resumeData: ParsedResume = {
+              id: result.data.id,
+              fileName: result.data.fileName,
+              extractedText: result.data.extractedText,
+              parsedAt: result.data.parsedAt,
+              fileType: `.${fileExtension}`,
+            };
+            
+            // Save to localStorage
+            saveResumeData(resumeData);
+            
+            return {
+              success: true,
+              message: 'Resume parsed and saved successfully (server-side)',
+              data: {
+                id: resumeData.id,
+                fileName: resumeData.fileName,
+                textLength: resumeData.extractedText.length,
+                parsedAt: resumeData.parsedAt,
+                extractedText: resumeData.extractedText,
+              },
+            };
+          }
+        }
+        
+        const errorResult = await response.json();
+        throw new Error(errorResult.error || 'Server processing failed');
+      } catch (serverError) {
+        console.error('Error with server-side PDF processing:', serverError);
+        return {
+          success: false,
+          message: 'Failed to process PDF',
+          error: 'PDF processing requires server connection. Please ensure the server is running and try again.'
+        };
+      }
+    }
+
+    // For DOCX files, try client-side processing first, then fallback to server
+    if (fileExtension === 'docx') {
+      try {
+        // Try client-side DOCX extraction first
+        const extractedText = await extractDocxText(file);
+        
+        // Create resume data object
+        const resumeData: ParsedResume = {
+          id: Date.now().toString(),
+          fileName: file.name,
+          extractedText,
+          parsedAt: new Date().toISOString(),
+          fileType: `.${fileExtension}`,
+        };
+
+        // Save to localStorage
+        saveResumeData(resumeData);
+
+        return {
+          success: true,
+          message: 'Resume parsed and saved successfully (client-side)',
+          data: {
+            id: resumeData.id,
+            fileName: resumeData.fileName,
+            textLength: extractedText.length,
+            parsedAt: resumeData.parsedAt,
+            extractedText: extractedText,
+          },
+        };
+      } catch (clientError) {
+        console.error('Client-side DOCX processing failed, trying server-side:', clientError);
+        
+        // Fallback to server-side processing for DOCX
+        try {
+          const formData = new FormData();
+          formData.append('file', file);
           
-          // Save to localStorage
-          saveResumeData(resumeData);
+          const response = await fetch('/api/upload-resume', {
+            method: 'POST',
+            body: formData,
+          });
           
+          if (response.ok) {
+            const result = await response.json();
+            if (result.success) {
+              const resumeData: ParsedResume = {
+                id: result.data.id,
+                fileName: result.data.fileName,
+                extractedText: result.data.extractedText,
+                parsedAt: result.data.parsedAt,
+                fileType: `.${fileExtension}`,
+              };
+              
+              saveResumeData(resumeData);
+              
+              return {
+                success: true,
+                message: 'Resume parsed and saved successfully (server-side)',
+                data: {
+                  id: resumeData.id,
+                  fileName: resumeData.fileName,
+                  textLength: resumeData.extractedText.length,
+                  parsedAt: resumeData.parsedAt,
+                  extractedText: resumeData.extractedText,
+                },
+              };
+            }
+          }
+          
+          throw new Error('Server processing also failed');
+        } catch (serverError) {
+          console.error('Server-side DOCX processing also failed:', serverError);
           return {
-            success: true,
-            message: 'Resume parsed and saved successfully (server-side)',
-            data: {
-              id: resumeData.id,
-              fileName: resumeData.fileName,
-              textLength: resumeData.extractedText.length,
-              parsedAt: resumeData.parsedAt,
-              extractedText: resumeData.extractedText,
-            },
+            success: false,
+            message: 'Failed to process DOCX file',
+            error: 'Both client and server processing failed. Please try again or contact support.'
           };
         }
       }
-      
-      // If server processing failed, continue with client-side processing
-      console.log('Server-side processing failed, falling back to client-side');
-    } catch (serverError) {
-      console.error('Error with server-side processing:', serverError);
-      // Continue with client-side processing
     }
-
-    // Extract text based on file type (client-side fallback)
-    let extractedText = '';
-    if (fileExtension === 'pdf') {
-      extractedText = await extractPdfText(file);
-    } else if (fileExtension === 'docx') {
-      extractedText = await extractDocxText(file);
-    }
-
-    // Create resume data object
-    const resumeData: ParsedResume = {
-      id: Date.now().toString(),
-      fileName: file.name,
-      extractedText,
-      parsedAt: new Date().toISOString(),
-      fileType: `.${fileExtension}`,
-    };
-
-    // Save to localStorage
-    saveResumeData(resumeData);
 
     return {
-      success: true,
-      message: 'Resume parsed and saved successfully (client-side)',
-      data: {
-        id: resumeData.id,
-        fileName: resumeData.fileName,
-        textLength: extractedText.length,
-        parsedAt: resumeData.parsedAt,
-        extractedText: extractedText,
-      },
+      success: false,
+      message: 'Unsupported file type',
+      error: 'Please upload PDF or DOCX files only.'
     };
   } catch (error) {
     console.error('Error processing resume:', error);

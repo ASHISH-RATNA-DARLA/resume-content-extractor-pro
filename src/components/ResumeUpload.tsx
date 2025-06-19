@@ -1,7 +1,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Upload, FileText, CheckCircle, AlertCircle, Loader2, Brain } from 'lucide-react';
+import { Upload, FileText, CheckCircle, AlertCircle, Loader2, Brain, Wifi, WifiOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { uploadResume } from '@/lib/resumeService';
 
@@ -163,6 +163,10 @@ const ResumeUpload: React.FC<ResumeUploadProps> = ({ onUploadSuccess }) => {
         isUploading: false, 
         uploadError: error instanceof Error ? error.message : 'Upload failed' 
       }));
+      
+      // Check if it's a server connection error
+      const isServerError = error instanceof Error && error.message.includes('server');
+      
       toast({
         title: "Upload failed",
         description: error instanceof Error ? error.message : 'Please try again.',
@@ -238,6 +242,12 @@ const ResumeUpload: React.FC<ResumeUploadProps> = ({ onUploadSuccess }) => {
             <AlertCircle className="h-10 w-10 text-red-500" />
             <p className="text-base font-medium text-red-700">Upload failed</p>
             <p className="text-sm text-muted-foreground">{uploadState.uploadError}</p>
+            {uploadState.uploadError.includes('server') && (
+              <div className="flex items-center gap-2 text-xs text-orange-600 bg-orange-50 px-3 py-2 rounded">
+                <WifiOff className="h-4 w-4" />
+                <span>Server connection required for PDF processing</span>
+              </div>
+            )}
             <Button 
               onClick={() => setUploadState(prev => ({ ...prev, uploadError: null }))}
               variant="outline"
@@ -254,8 +264,18 @@ const ResumeUpload: React.FC<ResumeUploadProps> = ({ onUploadSuccess }) => {
               <p className="text-sm text-muted-foreground">to generate personalized interview questions</p>
             </div>
             <div className="flex gap-2 text-xs text-muted-foreground">
-              <span className="bg-muted px-2 py-1 rounded">PDF</span>
-              <span className="bg-muted px-2 py-1 rounded">DOCX</span>
+              <span className="bg-muted px-2 py-1 rounded flex items-center gap-1">
+                <FileText className="h-3 w-3" />
+                PDF
+              </span>
+              <span className="bg-muted px-2 py-1 rounded flex items-center gap-1">
+                <FileText className="h-3 w-3" />
+                DOCX
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded mt-2">
+              <Wifi className="h-4 w-4" />
+              <span>PDF files require server connection for processing</span>
             </div>
           </div>
         )}
