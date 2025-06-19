@@ -9,7 +9,74 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      resume_questions: {
+        Row: {
+          category: string
+          created_at: string
+          difficulty: string
+          id: string
+          question: string
+          resume_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          difficulty: string
+          id?: string
+          question: string
+          resume_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          difficulty?: string
+          id?: string
+          question?: string
+          resume_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resume_questions_resume_id_fkey"
+            columns: ["resume_id"]
+            isOneToOne: false
+            referencedRelation: "resumes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resumes: {
+        Row: {
+          created_at: string
+          extracted_text: string
+          file_name: string
+          file_type: string
+          id: string
+          parsed_at: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          extracted_text: string
+          file_name: string
+          file_type: string
+          id?: string
+          parsed_at?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          extracted_text?: string
+          file_name?: string
+          file_type?: string
+          id?: string
+          parsed_at?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

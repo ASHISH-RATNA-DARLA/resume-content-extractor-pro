@@ -1,6 +1,7 @@
 
 import { extractDocxText } from './extractDocx';
 import { saveResumeData, getAllResumes, ParsedResume } from './resumeParser';
+import { saveResumeToSupabase, saveQuestionsToSupabase } from './supabaseResumeService';
 
 export async function uploadResume(file: File): Promise<{
   success: boolean;
@@ -49,8 +50,21 @@ export async function uploadResume(file: File): Promise<{
               fileType: `.${fileExtension}`,
             };
             
-            // Save to localStorage
+            // Save to localStorage as fallback
             saveResumeData(resumeData);
+            
+            // Save to Supabase
+            const supabaseResult = await saveResumeToSupabase({
+              id: resumeData.id,
+              fileName: resumeData.fileName,
+              extractedText: resumeData.extractedText,
+              parsedAt: resumeData.parsedAt,
+              fileType: resumeData.fileType
+            });
+            
+            if (!supabaseResult.success) {
+              console.warn('Failed to save to Supabase, using localStorage fallback');
+            }
             
             return {
               success: true,
@@ -93,8 +107,21 @@ export async function uploadResume(file: File): Promise<{
           fileType: `.${fileExtension}`,
         };
 
-        // Save to localStorage
+        // Save to localStorage as fallback
         saveResumeData(resumeData);
+
+        // Save to Supabase
+        const supabaseResult = await saveResumeToSupabase({
+          id: resumeData.id,
+          fileName: resumeData.fileName,
+          extractedText: resumeData.extractedText,
+          parsedAt: resumeData.parsedAt,
+          fileType: resumeData.fileType
+        });
+        
+        if (!supabaseResult.success) {
+          console.warn('Failed to save to Supabase, using localStorage fallback');
+        }
 
         return {
           success: true,

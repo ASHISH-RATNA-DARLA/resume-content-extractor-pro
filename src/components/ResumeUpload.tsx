@@ -1,9 +1,9 @@
-
 import React, { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Upload, FileText, CheckCircle, AlertCircle, Loader2, Brain, Wifi, WifiOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { uploadResume } from '@/lib/resumeService';
+import { saveQuestionsToSupabase } from '@/lib/supabaseResumeService';
 
 interface UploadState {
   isDragging: boolean;
@@ -134,6 +134,14 @@ const ResumeUpload: React.FC<ResumeUploadProps> = ({ onUploadSuccess }) => {
       if (result.success) {
         // Generate questions based on extracted text
         const questions = generateQuestionsFromResume(result.data?.extractedText || '');
+        
+        // Save questions to Supabase
+        if (questions.length > 0 && result.data?.id) {
+          const questionsResult = await saveQuestionsToSupabase(result.data.id, questions);
+          if (!questionsResult.success) {
+            console.warn('Failed to save questions to Supabase:', questionsResult.error);
+          }
+        }
         
         setUploadState(prev => ({ 
           ...prev, 

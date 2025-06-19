@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { FileText, Calendar, Brain, Eye, Loader2, MessageSquare } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { getResumesFromSupabase } from '@/lib/supabaseResumeService';
 import { getResumes } from '@/lib/resumeService';
 
 interface ParsedResume {
@@ -14,6 +14,7 @@ interface ParsedResume {
   extractedText: string;
   parsedAt: string;
   fileType: string;
+  questions?: Question[];
 }
 
 interface Question {
@@ -34,10 +35,30 @@ const ResumeList: React.FC = () => {
 
   const fetchResumes = async () => {
     try {
-      const result = getResumes();
-      setResumes(result.resumes);
+      // Try to fetch from Supabase first
+      const supabaseResult = await getResumesFromSupabase();
+      
+      if (supabaseResult.success && supabaseResult.data) {
+        const formattedResumes = supabaseResult.data.map((resume: any) => ({
+          id: resume.id,
+          fileName: resume.file_name,
+          extractedText: resume.extracted_text,
+          parsedAt: resume.parsed_at,
+          fileType: resume.file_type,
+          questions: resume.resume_questions || []
+        }));
+        setResumes(formattedResumes);
+      } else {
+        // Fallback to localStorage
+        console.warn('Failed to fetch from Supabase, using localStorage fallback');
+        const localResult = getResumes();
+        setResumes(localResult.resumes);
+      }
     } catch (error) {
       console.error('Error fetching resumes:', error);
+      // Fallback to localStorage
+      const localResult = getResumes();
+      setResumes(localResult.resumes);
     } finally {
       setLoading(false);
     }
@@ -197,8 +218,14 @@ const ResumeList: React.FC = () => {
 
   const handleViewQuestions = (resume: ParsedResume) => {
     setSelectedResumeId(resume.id);
-    const questions = generateQuestionsFromResume(resume.extractedText);
-    setGeneratedQuestions(questions);
+    
+    // Use stored questions if available, otherwise generate them
+    if (resume.questions && resume.questions.length > 0) {
+      setGeneratedQuestions(resume.questions);
+    } else {
+      const questions = generateQuestionsFromResume(resume.extractedText);
+      setGeneratedQuestions(questions);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -310,7 +337,12 @@ const ResumeList: React.FC = () => {
               <CardContent>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Brain className="h-4 w-4" />
-                  <span>Ready to generate personalized interview questions</span>
+                  <span>
+                    {resume.questions && resume.questions.length > 0 
+                      ? `${resume.questions.length} questions generated`
+                      : 'Ready to generate personalized interview questions'
+                    }
+                  </span>
                 </div>
               </CardContent>
             </Card>
