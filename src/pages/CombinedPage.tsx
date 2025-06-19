@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useToast } from '../hooks/use-toast';
 import { 
@@ -25,10 +24,23 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Separator } from '../components/ui/separator';
 import { TechnicalQuestion, MCQOption } from '../lib/techQuestionsService';
 import ResumeUpload from '../components/ResumeUpload';
-import ResumeList from '../components/ResumeList';
+import { 
+  Brain, 
+  Upload, 
+  FileText, 
+  ArrowLeft, 
+  CheckCircle, 
+  XCircle,
+  Star,
+  Clock,
+  Target
+} from "lucide-react";
+import { useNavigate } from 'react-router-dom';
 
 const CombinedPage: React.FC = () => {
+  const navigate = useNavigate();
   const { toast } = useToast();
+  
   const [questions, setQuestions] = useState<TechnicalQuestion[]>([]);
   const [filteredQuestions, setFilteredQuestions] = useState<TechnicalQuestion[]>([]);
   const [selectedQuestion, setSelectedQuestion] = useState<TechnicalQuestion | null>(null);
@@ -41,10 +53,10 @@ const CombinedPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [techStacks, setTechStacks] = useState<string[]>([]);
-  const [resumes, setResumes] = useState<any[]>([]);
-  const [resumeLoading, setResumeLoading] = useState(true);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [score, setScore] = useState(0);
+  const [showResults, setShowResults] = useState(false);
 
-  // Fetch all questions on component mount
   useEffect(() => {
     const fetchQuestions = async () => {
       try {
@@ -55,14 +67,12 @@ const CombinedPage: React.FC = () => {
           setQuestions(data.questions);
           setFilteredQuestions(data.questions);
           
-          // Extract unique tech stacks with proper type checking
           const uniqueTechStacks = [...new Set(data.questions.map((q: TechnicalQuestion) => q.tech_stack))].filter((stack): stack is string => typeof stack === 'string');
           setTechStacks(uniqueTechStacks);
         }
       } catch (error) {
         console.error('Error fetching questions:', error);
         
-        // Use sample data if API fails
         const sampleQuestions: TechnicalQuestion[] = [
           {
             id: '1',
@@ -96,7 +106,6 @@ const CombinedPage: React.FC = () => {
         setQuestions(sampleQuestions);
         setFilteredQuestions(sampleQuestions);
         
-        // Extract unique tech stacks
         const uniqueTechStacks = [...new Set(sampleQuestions.map((q) => q.tech_stack))];
         setTechStacks(uniqueTechStacks);
         
@@ -113,29 +122,6 @@ const CombinedPage: React.FC = () => {
     fetchQuestions();
   }, [toast]);
 
-  // Fetch resumes
-  useEffect(() => {
-    const fetchResumes = async () => {
-      try {
-        const response = await fetch('/api/get-resumes');
-        const data = await response.json();
-        setResumes(data.resumes || []);
-      } catch (error) {
-        console.error('Error fetching resumes:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load resumes',
-          variant: 'destructive',
-        });
-      } finally {
-        setResumeLoading(false);
-      }
-    };
-
-    fetchResumes();
-  }, [toast]);
-
-  // Apply filters when filter values change
   useEffect(() => {
     let filtered = [...questions];
     
@@ -148,9 +134,9 @@ const CombinedPage: React.FC = () => {
     }
     
     setFilteredQuestions(filtered);
+    setCurrentQuestionIndex(0);
   }, [techStackFilter, difficultyFilter, questions]);
 
-  // Fetch question details when a question is selected
   const handleQuestionSelect = async (question: TechnicalQuestion) => {
     setSelectedQuestion(question);
     setUserAnswer('');
@@ -170,9 +156,7 @@ const CombinedPage: React.FC = () => {
     } catch (error) {
       console.error('Error fetching question details:', error);
       
-      // Use sample data if API fails
       if (question.question_type === 'mcq') {
-        // Sample MCQ options for question id 3
         if (question.id === '3') {
           const sampleOptions: MCQOption[] = [
             {
@@ -208,7 +192,6 @@ const CombinedPage: React.FC = () => {
           setExpectedAnswer(null);
         }
       } else {
-        // Sample expected answer for long answer questions
         const sampleAnswer = {
           id: `ans-${question.id}`,
           question_id: question.id,
@@ -228,11 +211,9 @@ const CombinedPage: React.FC = () => {
     }
   };
 
-  // Submit user's answer
   const handleSubmitAnswer = async () => {
     if (!selectedQuestion) return;
     
-    // Validate answer
     if (selectedQuestion.question_type === 'mcq' && !selectedOption) {
       toast({
         title: 'Error',
@@ -260,7 +241,7 @@ const CombinedPage: React.FC = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          user_id: 'demo-user', // Replace with actual user ID in a real app
+          user_id: 'demo-user',
           question_id: selectedQuestion.id,
           user_answer: selectedQuestion.question_type === 'mcq' ? selectedOption : userAnswer,
         }),
@@ -274,14 +255,17 @@ const CombinedPage: React.FC = () => {
           description: 'Your answer has been submitted',
         });
         
-        // Show correct answer for MCQ
         if (selectedQuestion.question_type === 'mcq') {
           const correctOption = mcqOptions.find(option => option.is_correct);
           if (correctOption) {
+            const isCorrect = selectedOption === correctOption.id;
+            if (isCorrect) {
+              setScore(prev => prev + 1);
+            }
             toast({
-              title: 'Correct Answer',
+              title: isCorrect ? 'Correct!' : 'Incorrect',
               description: `The correct answer is ${correctOption.option_label}: ${correctOption.option_text}`,
-              variant: selectedOption === correctOption.id ? 'default' : 'destructive',
+              variant: isCorrect ? 'default' : 'destructive',
             });
           }
         }
@@ -291,20 +275,22 @@ const CombinedPage: React.FC = () => {
     } catch (error) {
       console.error('Error submitting answer:', error);
       
-      // Handle the case when the API is not available
       toast({
         title: 'Answer Received',
         description: 'Your answer has been recorded locally (demo mode)',
       });
       
-      // Show correct answer for MCQ in demo mode
       if (selectedQuestion.question_type === 'mcq') {
         const correctOption = mcqOptions.find(option => option.is_correct);
         if (correctOption) {
+          const isCorrect = selectedOption === correctOption.id;
+          if (isCorrect) {
+            setScore(prev => prev + 1);
+          }
           toast({
-            title: 'Correct Answer',
+            title: isCorrect ? 'Correct!' : 'Incorrect',
             description: `The correct answer is ${correctOption.option_label}: ${correctOption.option_text}`,
-            variant: selectedOption === correctOption.id ? 'default' : 'destructive',
+            variant: isCorrect ? 'default' : 'destructive',
           });
         }
       }
@@ -313,13 +299,11 @@ const CombinedPage: React.FC = () => {
     }
   };
 
-  // Reset filters
   const handleResetFilters = () => {
     setTechStackFilter('');
     setDifficultyFilter('');
   };
 
-  // Render difficulty badge with appropriate color
   const renderDifficultyBadge = (difficulty: string) => {
     let variant: 'default' | 'secondary' | 'destructive' | 'outline' = 'default';
     
@@ -340,9 +324,7 @@ const CombinedPage: React.FC = () => {
     return <Badge variant={variant}>{difficulty}</Badge>;
   };
 
-  // Handle resume upload success
   const handleResumeUploadSuccess = (newResume: any) => {
-    setResumes(prevResumes => [...prevResumes, newResume]);
     toast({
       title: 'Success',
       description: 'Resume uploaded and parsed successfully',
@@ -350,189 +332,313 @@ const CombinedPage: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto py-8">
-      <h1 className="text-3xl font-bold mb-6 text-center">SDE-HIRE Platform</h1>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Technical Questions Section */}
-        <div>
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>Technical Interview Questions</CardTitle>
-              <CardDescription>Browse and answer technical interview questions</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {/* Filters */}
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <div className="flex-1 space-y-2">
-                    <Label htmlFor="tech-stack">Technology Stack</Label>
-                    <Select value={techStackFilter} onValueChange={setTechStackFilter}>
-                      <SelectTrigger id="tech-stack">
-                        <SelectValue placeholder="Select tech stack" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {techStacks.map(tech => (
-                          <SelectItem key={tech} value={tech}>{tech}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="flex-1 space-y-2">
-                    <Label htmlFor="difficulty">Difficulty Level</Label>
-                    <Select value={difficultyFilter} onValueChange={setDifficultyFilter}>
-                      <SelectTrigger id="difficulty">
-                        <SelectValue placeholder="Select difficulty" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="easy">Easy</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="hard">Hard</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="flex items-end">
-                    <Button variant="outline" onClick={handleResetFilters}>
-                      Reset
-                    </Button>
-                  </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => navigate('/')}
+                className="flex items-center gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back to Home
+              </Button>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
+                  <Brain className="h-6 w-6 text-white" />
                 </div>
-                
-                <Tabs defaultValue="questions">
-                  <TabsList className="mb-4">
-                    <TabsTrigger value="questions">Questions</TabsTrigger>
-                    <TabsTrigger value="answer" disabled={!selectedQuestion}>Answer</TabsTrigger>
-                  </TabsList>
-                  
-                  <TabsContent value="questions">
-                    <div className="max-h-[400px] overflow-y-auto space-y-4 pr-2">
-                      {loading ? (
-                        <div className="flex justify-center items-center h-40">Loading questions...</div>
-                      ) : filteredQuestions.length > 0 ? (
-                        filteredQuestions.map(question => (
-                          <Card 
-                            key={question.id} 
-                            className={`cursor-pointer hover:border-primary transition-colors ${
-                              selectedQuestion?.id === question.id ? 'border-primary' : ''
-                            }`}
-                            onClick={() => handleQuestionSelect(question)}
-                          >
-                            <CardHeader className="pb-2">
-                              <div className="flex justify-between items-start">
-                                <CardTitle className="text-lg">{question.question_type.toUpperCase()}</CardTitle>
-                                <div className="flex gap-2">
-                                  <Badge variant="outline">{question.tech_stack}</Badge>
-                                  {renderDifficultyBadge(question.difficulty_level)}
-                                </div>
-                              </div>
-                              <CardDescription>{question.topic}</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                              <p>{question.question_text}</p>
-                            </CardContent>
-                          </Card>
-                        ))
-                      ) : (
-                        <Card>
-                          <CardContent className="pt-6">
-                            <p className="text-center text-muted-foreground">No questions found matching the selected filters.</p>
-                          </CardContent>
-                        </Card>
-                      )}
-                    </div>
-                  </TabsContent>
-                  
-                  <TabsContent value="answer">
-                    {selectedQuestion && (
-                      <div className="max-h-[400px] overflow-y-auto pr-2">
-                        <Card>
-                          <CardHeader>
-                            <div className="flex justify-between items-start">
-                              <CardTitle>{selectedQuestion.question_type.toUpperCase()}</CardTitle>
-                              <div className="flex gap-2">
-                                <Badge variant="outline">{selectedQuestion.tech_stack}</Badge>
-                                {renderDifficultyBadge(selectedQuestion.difficulty_level)}
-                              </div>
-                            </div>
-                            <CardDescription>{selectedQuestion.topic}</CardDescription>
-                          </CardHeader>
-                          <CardContent className="space-y-4">
-                            <div className="p-4 bg-muted rounded-md">
-                              <p className="font-medium">{selectedQuestion.question_text}</p>
-                            </div>
-                            
-                            <Separator />
-                            
-                            {selectedQuestion.question_type === 'mcq' ? (
-                              <RadioGroup value={selectedOption} onValueChange={setSelectedOption}>
-                                {mcqOptions.map(option => (
-                                  <div key={option.id} className="flex items-center space-x-2 p-2 rounded-md hover:bg-muted">
-                                    <RadioGroupItem value={option.id} id={option.id} />
-                                    <Label htmlFor={option.id} className="flex-1 cursor-pointer">
-                                      <span className="font-semibold">{option.option_label}:</span> {option.option_text}
-                                    </Label>
-                                  </div>
-                                ))}
-                              </RadioGroup>
-                            ) : (
-                              <div className="space-y-2">
-                                <Label htmlFor="answer">Your Answer</Label>
-                                <Textarea
-                                  id="answer"
-                                  placeholder="Type your answer here..."
-                                  value={userAnswer}
-                                  onChange={(e) => setUserAnswer(e.target.value)}
-                                  rows={6}
-                                />
-                              </div>
-                            )}
-                          </CardContent>
-                          <CardFooter>
-                            <Button 
-                              onClick={handleSubmitAnswer} 
-                              disabled={submitting}
-                              className="w-full"
-                            >
-                              {submitting ? 'Submitting...' : 'Submit Answer'}
-                            </Button>
-                          </CardFooter>
-                        </Card>
-                      </div>
-                    )}
-                  </TabsContent>
-                </Tabs>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">Technical Interview Simulator</h1>
+                  <p className="text-sm text-gray-600">Practice & Perfect Your Skills</p>
+                </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 text-sm">
+                <Clock className="h-4 w-4 text-gray-500" />
+                <span className="text-gray-600">Questions: {currentQuestionIndex + 1}/{filteredQuestions.length}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Target className="h-4 w-4 text-green-500" />
+                <span className="text-gray-600">Score: {score}</span>
+              </div>
+            </div>
+          </div>
         </div>
-        
-        {/* Resume Parser Section */}
-        <div>
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>Resume Parser</CardTitle>
-              <CardDescription>Upload and parse resumes in PDF or DOCX format</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
+      </div>
+
+      <div className="container mx-auto px-4 py-8">
+        <Tabs defaultValue="practice" className="w-full">
+          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-8">
+            <TabsTrigger value="practice" className="flex items-center gap-2">
+              <Brain className="h-4 w-4" />
+              Practice Questions
+            </TabsTrigger>
+            <TabsTrigger value="resume" className="flex items-center gap-2">
+              <Upload className="h-4 w-4" />
+              Resume Analysis
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="practice">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Filters Sidebar */}
+              <div className="lg:col-span-1">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Brain className="h-5 w-5" />
+                      Filter Questions
+                    </CardTitle>
+                    <CardDescription>Choose your focus area</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="tech-stack">Technology Stack</Label>
+                      <Select value={techStackFilter} onValueChange={setTechStackFilter}>
+                        <SelectTrigger id="tech-stack">
+                          <SelectValue placeholder="Select tech stack" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {techStacks.map(tech => (
+                            <SelectItem key={tech} value={tech}>{tech}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="difficulty">Difficulty Level</Label>
+                      <Select value={difficultyFilter} onValueChange={setDifficultyFilter}>
+                        <SelectTrigger id="difficulty">
+                          <SelectValue placeholder="Select difficulty" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="easy">Easy</SelectItem>
+                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="hard">Hard</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <Button variant="outline" onClick={handleResetFilters} className="w-full">
+                      Reset Filters
+                    </Button>
+
+                    {/* Quick Stats */}
+                    <div className="pt-4 border-t">
+                      <h4 className="font-medium mb-3">Session Stats</h4>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span>Questions Available:</span>
+                          <span className="font-medium">{filteredQuestions.length}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Current Score:</span>
+                          <span className="font-medium text-green-600">{score}/{currentQuestionIndex}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Main Content */}
+              <div className="lg:col-span-2">
+                {loading ? (
+                  <Card>
+                    <CardContent className="flex justify-center items-center h-64">
+                      <div className="text-center">
+                        <Brain className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+                        <p>Loading questions...</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : selectedQuestion ? (
+                  <Card>
+                    <CardHeader>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <CardTitle className="flex items-center gap-2">
+                            {selectedQuestion.question_type === 'mcq' ? (
+                              <CheckCircle className="h-5 w-5 text-blue-600" />
+                            ) : (
+                              <FileText className="h-5 w-5 text-green-600" />
+                            )}
+                            {selectedQuestion.question_type.toUpperCase()} Question
+                          </CardTitle>
+                          <CardDescription>{selectedQuestion.topic}</CardDescription>
+                        </div>
+                        <div className="flex gap-2">
+                          <Badge variant="outline">{selectedQuestion.tech_stack}</Badge>
+                          {renderDifficultyBadge(selectedQuestion.difficulty_level)}
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div className="p-4 bg-gray-50 rounded-lg border-l-4 border-blue-500">
+                        <p className="font-medium text-gray-900">{selectedQuestion.question_text}</p>
+                      </div>
+                      
+                      <Separator />
+                      
+                      {selectedQuestion.question_type === 'mcq' ? (
+                        <div className="space-y-3">
+                          <Label className="text-base font-medium">Choose your answer:</Label>
+                          <RadioGroup value={selectedOption} onValueChange={setSelectedOption}>
+                            {mcqOptions.map(option => (
+                              <div key={option.id} className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 border">
+                                <RadioGroupItem value={option.id} id={option.id} />
+                                <Label htmlFor={option.id} className="flex-1 cursor-pointer">
+                                  <span className="font-semibold text-blue-600">{option.option_label}:</span> {option.option_text}
+                                </Label>
+                              </div>
+                            ))}
+                          </RadioGroup>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <Label htmlFor="answer" className="text-base font-medium">Your Answer:</Label>
+                          <Textarea
+                            id="answer"
+                            placeholder="Type your detailed answer here..."
+                            value={userAnswer}
+                            onChange={(e) => setUserAnswer(e.target.value)}
+                            rows={8}
+                            className="min-h-[200px]"
+                          />
+                          <p className="text-sm text-gray-500">
+                            Tip: Include key concepts, examples, and explain your reasoning for better evaluation.
+                          </p>
+                        </div>
+                      )}
+                    </CardContent>
+                    <CardFooter>
+                      <Button 
+                        onClick={handleSubmitAnswer} 
+                        disabled={submitting}
+                        className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                        size="lg"
+                      >
+                        {submitting ? (
+                          <>
+                            <Brain className="mr-2 h-4 w-4 animate-spin" />
+                            Submitting...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="mr-2 h-4 w-4" />
+                            Submit Answer
+                          </>
+                        )}
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                ) : (
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="text-center">
+                        <Brain className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+                        <h3 className="text-lg font-medium mb-2">Ready to Practice?</h3>
+                        <p className="text-gray-600 mb-6">Select a question from the list below to begin your technical interview practice.</p>
+                        
+                        <div className="grid gap-4 max-h-96 overflow-y-auto">
+                          {filteredQuestions.length > 0 ? (
+                            filteredQuestions.map((question, index) => (
+                              <Card 
+                                key={question.id} 
+                                className="cursor-pointer hover:border-blue-500 hover:shadow-md transition-all"
+                                onClick={() => {
+                                  handleQuestionSelect(question);
+                                  setCurrentQuestionIndex(index);
+                                }}
+                              >
+                                <CardHeader className="pb-2">
+                                  <div className="flex justify-between items-start">
+                                    <div className="flex items-center gap-2">
+                                      {question.question_type === 'mcq' ? (
+                                        <CheckCircle className="h-4 w-4 text-blue-600" />
+                                      ) : (
+                                        <FileText className="h-4 w-4 text-green-600" />
+                                      )}
+                                      <CardTitle className="text-base">{question.question_type.toUpperCase()}</CardTitle>
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <Badge variant="outline" className="text-xs">{question.tech_stack}</Badge>
+                                      {renderDifficultyBadge(question.difficulty_level)}
+                                    </div>
+                                  </div>
+                                  <CardDescription className="text-left">{question.topic}</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                  <p className="text-sm text-left">{question.question_text}</p>
+                                </CardContent>
+                              </Card>
+                            ))
+                          ) : (
+                            <div className="text-center py-8">
+                              <XCircle className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                              <p className="text-gray-600">No questions found matching the selected filters.</p>
+                              <Button variant="outline" onClick={handleResetFilters} className="mt-4">
+                                Reset Filters
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="resume">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Upload className="h-5 w-5" />
+                  Resume Analysis & Personalized Questions
+                </CardTitle>
+                <CardDescription>
+                  Upload your resume to get AI-generated questions based on your experience and skills
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
                 <ResumeUpload onUploadSuccess={handleResumeUploadSuccess} />
                 
-                <Separator />
-                
-                <div className="max-h-[400px] overflow-y-auto pr-2">
-                  <h3 className="text-lg font-medium mb-4">Parsed Resumes</h3>
-                  {resumeLoading ? (
-                    <div className="flex justify-center items-center h-40">Loading resumes...</div>
-                  ) : (
-                    <ResumeList />
-                  )}
+                <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="text-center p-6 bg-blue-50 rounded-lg">
+                    <Upload className="h-8 w-8 text-blue-600 mx-auto mb-3" />
+                    <h3 className="font-semibold mb-2">Upload Resume</h3>
+                    <p className="text-sm text-gray-600">
+                      Support for PDF and DOCX formats
+                    </p>
+                  </div>
+                  <div className="text-center p-6 bg-green-50 rounded-lg">
+                    <Brain className="h-8 w-8 text-green-600 mx-auto mb-3" />
+                    <h3 className="font-semibold mb-2">AI Analysis</h3>
+                    <p className="text-sm text-gray-600">
+                      Extract skills, experience, and projects
+                    </p>
+                  </div>
+                  <div className="text-center p-6 bg-purple-50 rounded-lg">
+                    <Star className="h-8 w-8 text-purple-600 mx-auto mb-3" />
+                    <h3 className="font-semibold mb-2">Custom Questions</h3>
+                    <p className="text-sm text-gray-600">
+                      Generate personalized interview questions
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
